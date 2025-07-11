@@ -23,17 +23,8 @@ if not ok or type(result) ~= "table" or not result.script then
     return
 end
 
-local good, decodedScript = pcall(function()
-    return HttpService:Base64Decode(result.script)
-end)
-
-if not good then
-    warn("[×] Script decode error.")
-    return
-end
-
 local final, err = pcall(function()
-    loadstring(decodedScript)()
+    loadstring(result.script)()
 end)
 
 if not final then
