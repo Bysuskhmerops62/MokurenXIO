@@ -1,36 +1,55 @@
 local HttpService = game:GetService("HttpService")
 
--- CUSTOM: Hardcode UID ឬ ប្តូរជាផ្លូវការបាន
-local uid = "sOUsl0NJtLiiMcDq3WIi" -- ប្តូរជា UID របស់ script
+-- យក UID ពី argument
+local args = {...}
+local uid = args[1]
 
+if not uid or uid == "" then
+    warn("[×] UID is missing!")
+    return
+end
+
+-- Firebase URL (ផ្លាស់ប្តូរតាម project របស់អ្នក)
 local firebaseURL = "https://synapse-roblox-default-rtdb.firebaseio.com/scripts/" .. uid .. ".json"
 
+-- ព្យាយាមទាញ JSON ពី Firebase
 local success, response = pcall(function()
     return game:HttpGet(firebaseURL)
 end)
 
 if not success then
-    warn("[×] Firebase Error")
+    warn("[×] Cannot reach Firebase server.")
     return
 end
 
-local parsed, data = pcall(function()
+-- Parse JSON response
+local ok, result = pcall(function()
     return HttpService:JSONDecode(response)
 end)
 
-if not parsed or not data or not data.script then
-    warn("[×] JSON invalid or script missing")
+if not ok or type(result) ~= "table" or not result.script then
+    warn("[×] Invalid UID or script missing in Firebase.")
     return
 end
 
--- 🔎 Debug: print Script pulled from Firebase
-print("[✓] Script: ", data.script)
-
--- ✅ Run script
-local ok, err = pcall(function()
-    loadstring(data.script)()
+-- ត្រលប់ script តាមរយៈ Base64 decode (បើ script មិនបាន encode ត្រូវលុបផ្នែកនេះ)
+local decodedScript
+local decodeSuccess, decodeResult = pcall(function()
+    return HttpService:Base64Decode(result.script)
 end)
 
-if not ok then
-    warn("[×] Script error: " .. tostring(err))
+if decodeSuccess then
+    decodedScript = decodeResult
+else
+    -- ប្រសិនបើ មិនបាន encode Base64, ដាក់ raw script ត្រលប់ត្រង់
+    decodedScript = result.script
+end
+
+-- ព្យាយាម run script
+local runSuccess, runError = pcall(function()
+    loadstring(decodedScript)()
+end)
+
+if not runSuccess then
+    warn("[×] Script runtime error: " .. tostring(runError))
 end
