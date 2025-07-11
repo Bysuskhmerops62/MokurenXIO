@@ -1,27 +1,51 @@
-local Http = game:GetService("HttpService")
+-- ScriptList.lua
+local HttpService = game:GetService("HttpService")
 
--- UID from URL path
-local UID = ... or "none"
+-- 🔎 ចាប់ UID ពី URL
+local requestUrl = tostring(getfenv().scriptURL or "")
+local uid = string.match(requestUrl, "/([%w%-_]+)$")
 
-if not UID or #UID < 8 then
-    error("[×] Invalid UID Supplied")
-end
+-- ✅ URL Firebase
+local firebaseURL = "https://synapse-roblox-default-rtdb.firebaseio.com/scripts/" .. uid .. ".json"
 
+-- 🛠️ ដាក់ការពារ fallback
 local success, response = pcall(function()
-    return game:HttpGet("https://synapse-roblox-default-rtdb.firebaseio.com/scripts/" .. UID .. ".json")
+    return game:HttpGet(firebaseURL)
 end)
 
 if not success then
-    error("[×] Failed to fetch script from Firebase")
+    warn("[×] Error while contacting Firebase.")
+    return
 end
 
-local ok, data = pcall(function()
-    return Http:JSONDecode(response)
+-- ✅ Parse JSON
+local ok, result = pcall(function()
+    return HttpService:JSONDecode(response)
 end)
 
-if not ok or not data or not data.script then
-    error("[×] UID NOT Found or Invalid Script")
+if not ok or type(result) ~= "table" or not result.script then
+    warn("[×] UID invalid or script missing.")
+    return
 end
 
-local raw = Http:Base64Decode(data.script)
-return loadstring(raw)
+-- ✅ Decode Base64 script
+local decodedScript
+local good, decode = pcall(function()
+    return HttpService:Base64Decode(result.script)
+end)
+
+if good then
+    decodedScript = decode
+else
+    warn("[×] Script decode error")
+    return
+end
+
+-- ✅ Run script safely
+local final, err = pcall(function()
+    loadstring(decodedScript)()
+end)
+
+if not final then
+    warn("[×] Script runtime error: ", err)
+end
