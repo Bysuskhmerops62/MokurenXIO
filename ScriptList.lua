@@ -1,38 +1,42 @@
 local HttpService = game:GetService("HttpService")
 
--- ត្រូវបានផ្តល់ UID តាម URL (simulate environment)
-local requestUrl = tostring(getfenv().scriptURL or "")
-local uid = string.match(requestUrl, "/([%w_]+)$")
+-- ចាប់ UID ពី URL
+local url = tostring(getfenv().scriptURL or "")
+local uid = string.match(url, "/([%w_%-]+)$") or ""
 
-if not uid then
-    warn("[×] UID missing from URL")
-    return
+-- Handle UID ដែលចាប់ផ្តើមដោយ "-"
+if string.sub(uid, 1, 1) == "-" then
+    uid = "s" .. string.sub(uid, 2)
 end
 
+-- Firebase URL
 local firebaseURL = "https://synapse-roblox-default-rtdb.firebaseio.com/scripts/" .. uid .. ".json"
 
+-- Fetch script
 local success, response = pcall(function()
     return game:HttpGet(firebaseURL)
 end)
 
-if not success or not response then
-    warn("[×] Failed to get script from Firebase")
+if not success then
+    warn("[×] Error contacting Firebase")
     return
 end
 
-local ok, data = pcall(function()
+-- Parse JSON
+local parsed, result = pcall(function()
     return HttpService:JSONDecode(response)
 end)
 
-if not ok or type(data) ~= "table" or not data.script then
-    warn("[×] Invalid JSON or script missing")
+if not parsed or not result.script then
+    warn("[×] Invalid UID or missing script")
     return
 end
 
+-- Run script directly (no Base64)
 local final, err = pcall(function()
-    loadstring(data.script)()
+    loadstring(result.script)()
 end)
 
 if not final then
-    warn("[×] Script runtime error: " .. tostring(err))
+    warn("[×] Script Error: " .. tostring(err))
 end
