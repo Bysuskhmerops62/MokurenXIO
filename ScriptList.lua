@@ -1,50 +1,27 @@
--- ScriptList.lua (Server-side Lua script - run on Vercel or Lua supported server)
+local Http = game:GetService("HttpService")
 
-local Http = game:GetService and game:GetService("HttpService") or require("HttpService")
+-- UID from URL path
+local UID = ... or "none"
 
--- អ្នកប្រើ URL param ជា UID
-local args = {...}
-local uid = args[1] or ""
-
-if uid == "" then
-    return "error('No UID specified')"
+if not UID or #UID < 8 then
+    error("[×] Invalid UID Supplied")
 end
 
--- Firebase URL
-local url = "https://synapse-roblox-default-rtdb.firebaseio.com/scripts/" .. uid .. ".json"
-
-local res, err = pcall(function()
-    if game then
-        return game:HttpGet(url)
-    else
-        -- ប្រសិន run នៅ luarocks ឬ server ផ្សេង (optional)
-        local http = require("socket.http")
-        local body, code = http.request(url)
-        if code == 200 then
-            return body
-        else
-            error("HTTP request failed: " .. tostring(code))
-        end
-    end
+local success, response = pcall(function()
+    return game:HttpGet("https://synapse-roblox-default-rtdb.firebaseio.com/scripts/" .. UID .. ".json")
 end)
 
-if not res or not err then
-    return "error('Failed to fetch from Firebase')"
+if not success then
+    error("[×] Failed to fetch script from Firebase")
 end
 
-local HttpService = Http or (game and game:GetService("HttpService")) or nil
-if not HttpService then
-    return "error('HttpService not found')"
+local ok, data = pcall(function()
+    return Http:JSONDecode(response)
+end)
+
+if not ok or not data or not data.script then
+    error("[×] UID NOT Found or Invalid Script")
 end
 
-local data = HttpService:JSONDecode(err)
-
-if not data or not data.script then
-    return "error('Script not found for UID: " .. uid .. "')"
-end
-
--- Decode Base64 to raw Lua code
-local decodedScript = HttpService:Base64Decode(data.script)
-
--- Return Lua script raw so client can run loadstring on it
-return decodedScript
+local raw = Http:Base64Decode(data.script)
+return loadstring(raw)
