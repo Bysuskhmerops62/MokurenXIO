@@ -1,11 +1,7 @@
 local HttpService = game:GetService("HttpService")
 
-local url = tostring(getfenv().scriptURL or "")
-local uid = string.match(url, "/([%w_%-]+)$") or ""
-
-if string.sub(uid, 1, 1) == "-" then
-    uid = "s" .. string.sub(uid, 2)
-end
+-- CUSTOM: Hardcode UID ឬ ប្តូរជាផ្លូវការបាន
+local uid = "sOUsl0NJtLiiMcDq3WIi" -- ប្តូរជា UID របស់ script
 
 local firebaseURL = "https://synapse-roblox-default-rtdb.firebaseio.com/scripts/" .. uid .. ".json"
 
@@ -22,18 +18,15 @@ local parsed, data = pcall(function()
     return HttpService:JSONDecode(response)
 end)
 
-if not parsed then
-    warn("[×] JSON Decode Error")
+if not parsed or not data or not data.script then
+    warn("[×] JSON invalid or script missing")
     return
 end
 
-if not data or not data.script or type(data.script) ~= "string" then
-    warn("[×] Script missing")
-    return
-end
+-- 🔎 Debug: print Script pulled from Firebase
+print("[✓] Script: ", data.script)
 
-print("[✓] Script pulled: " .. data.script)
-
+-- ✅ Run script
 local ok, err = pcall(function()
     loadstring(data.script)()
 end)
